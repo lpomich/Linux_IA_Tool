@@ -1,0 +1,114 @@
+
+print("**This is a tool to assist with your weekly audits of Linux systems**")
+print("**Basic knowledge of Linux directory structure is required to use this tool**")
+print("**You MUST name the csv file audit.csv for this script to work**")
+
+import os, sys, subprocess, re, syslog, csv, pwd, grp
+from os import listdir
+import datetime as dt
+import webbrowser as wb
+import apt
+import readline
+#username = getpass.getuser()
+homedir = os.path.expanduser('~')
+audit_csv_location = 'file://' + homedir + '/audit.csv'
+html_output_location = 'file//' +homedir + '/audit.html'
+#This will allow tab autocomplete when the user inputs the file locations
+readline.parse_and_bind("tab: complete")
+print("This is an output of logs in /var/log/audit")
+print(os.listdir("/var/log/audit"))
+print("This is an output of the logs in /var/log")
+print(os.listdir("/var/log"))
+#Define the audit location for centralized logging such as a syslog server
+log_location = input("What is the location of the log file?")
+
+#Let user change log location
+def global_change():
+    global log_location
+    print(log_location)
+    log_location = (input("Please enter the new log location: "))
+    
+#Obtain all users and groups on the system
+def list_user_groups():
+    groups = grp.getgrall()
+    for group in groups:
+        for user in group[3]:
+            print(user, group[0])
+
+#Detect USB usage from system logs
+def detect_usb():
+    with open("/var/log/syslog") as f:
+        for line in f:
+            if "usb" in line.lower():
+                print(line)
+
+#Definition is used for standalone/local systems
+def audit_local():
+    auparam = " -sc EXECVE"
+    cmd = "ausearch -ts now -te week-ago -ua -i --format csv >" + audit_csv_location
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+#Convert the previously collected log to csv and write the output to audit.csv file
+def audit_central():
+    with open('log_location') as file:
+        lines = file.read().splitlines()
+        lines = [lines[x:x+3] for x in range(0, len(lines), 3)]
+
+    with open('audit_csv_location', 'w+') as csvfile:
+        w = csv.writer(csvfile)
+        w.writerows(lines)
+
+#Convert csv to an html table
+def csvtotable():
+    
+    
+#Open the web browser and import the html file for the user
+def display():
+    wb.open('file://' + homedir + '/audit.html')
+
+#Presents user with main menu
+def main():
+   menu()
+
+def menu():
+    print("************Welcome to Linux Audit Viewer**************")
+    print()
+loop = 1
+choice = 0
+while loop == 1:
+    choice = input("""
+                        1: Audit Local System
+                        2: Audit logs located on syslog/centralized server
+                        3: Perform conversion of csv file to and html file
+                        4: Display HTML file in browser
+                        5: Check for USB usage
+                        6: List Users and Groups
+                        7: Print log location
+                        8: Change log location
+                        9: Exit
+                            Please enter your choice: """)
+
+    if choice == "1":
+          audit_local()
+    elif choice == "2":
+       audit_central()
+    elif choice=="3":
+           csvtotable()
+    elif choice=="4":
+           display()
+    elif choice=="5":
+           detect_usb()
+    elif choice=="6":
+           list_user_groups() 
+    elif choice=="7":
+            print(log_location)
+    elif choice=="8":
+            global_change()
+    elif choice=="9":
+            sys.exit()
+    else:
+        print("You may only choose a predefined option")
+        print("Please try again")
+        main()
+   
+main()
